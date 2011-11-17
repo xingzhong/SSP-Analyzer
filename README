@@ -1,5 +1,5 @@
-This tool analyze the C/C++ programming language based on Abstract Syntax
+This tool analyze the C/C++ programming languages based on Abstract Syntax
 Tree (AST).
-It is based on the libclang. 
+It use the library libclang as Clang in LLVM project. 
 Xingzhong Stevens Tech. SSP Team 
 Nov 17, 2011
