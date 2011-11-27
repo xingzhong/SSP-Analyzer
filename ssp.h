@@ -4,11 +4,13 @@
 #include <mysql/mysql.h>
 #include "clang-c/Index.h"
 
+#define KEEP 0
+#define LOST 1
 /*the function prototype for clang */
 typedef struct {
-    unsigned int depth;
-    CXCursorSet parmset;
     MYSQL *conn;
+    char *tblName;
+    char *dbName;
 }SSPD;
 
 const char* get_version(void);
@@ -21,5 +23,5 @@ void debug_cursor(CXCursor);
 const char* sql_version(void);
 void sql_init(MYSQL *, char *);
 void sql_close(MYSQL *);
-void sql_create_tbl(MYSQL *, char *); 
+void sql_create_tbl(MYSQL *, char *, unsigned int ); 
 void sql_insert(MYSQL *, char *, char *);

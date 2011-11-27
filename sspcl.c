@@ -6,6 +6,7 @@
 #define is_declfun(x) (clang_getCursorKind(x) == CXCursor_FunctionDecl ? 1 : 0)
 #define CONTAIN clang_CXCursorSet_contains //if return 0, set contain the cursor
 #define INSERT  clang_CXCursorSet_insert
+#define PREFIX(x) *strchr(x, '.') = '\0'
 
 
 void 
@@ -51,7 +52,8 @@ ssp_function(CXCursor Cursor, CXCursor Parent, CXClientData ClientData){
     enum CXCursorKind t = clang_getCursorKind(Cursor);
     SSPD *data = (SSPD *)ClientData;
     char *content = ssp2sql(Cursor);
-    sql_insert(data->conn, "tb1", content);
+    char *tblName = data->tblName;
+    sql_insert(data->conn, tblName, content);
     free(content);
     return CXChildVisit_Recurse;
 }
@@ -59,18 +61,25 @@ ssp_function(CXCursor Cursor, CXCursor Parent, CXClientData ClientData){
 enum CXChildVisitResult 
 ssp_callback(CXCursor Cursor, CXCursor Parent, CXClientData ClientData){
     SSPD data;
-    data.parmset = clang_createCXCursorSet();
     data.conn = mysql_init(NULL);
-    sql_init(data.conn, "test");
+    data.dbName = (char *)ClientData;
+    sql_init(data.conn, data.dbName); 
+    /*FIXME no need to create db multiple times, then drop the previous db*/
     if (is_declfun(Cursor)){
-        data.depth = 1;
-        debug_cursor(Cursor);
-        sql_create_tbl(data.conn, "tb1"); /*FIXME: "tb1" change to function name*/
+        data.tblName = malloc(128*sizeof(char));
+        strcpy(data.tblName, OUTPUT(clang_getCursorSpelling(Cursor)));
+        sql_create_tbl(data.conn, data.tblName, LOST); 
         clang_visitChildren(Cursor, ssp_function, (CXClientData *)(&data));
+        free(data.tblName);
+        sql_close(data.conn);
+        return CXChildVisit_Continue;
     }
-    clang_disposeCXCursorSet(data.parmset);
-    sql_close(data.conn);
-    return CXChildVisit_Continue;
+    else{
+        sql_create_tbl(data.conn, "TranslationUnit", KEEP);
+        debug_cursor(Cursor);
+        sql_insert(data.conn, "TranslationUnit", ssp2sql(Cursor));
+        return CXChildVisit_Recurse;
+    }
 }
 
 
@@ -81,29 +90,12 @@ ssp_type(CXCursor cursor, SSPD *pd){
     debug_cursor(cursor);
     if (clang_isDeclaration(t)){
         printf("decl\n");
-        if(t==CXCursor_ParmDecl){
-            if(!INSERT(pd->parmset, cursor)){printf("Already\t");}
-            printf("Insert\t%d\t", CONTAIN(pd->parmset, cursor));
-            debug_cursor(cursor);
-        }
     }
     else if (clang_isReference(t)){
         printf("ref\n");
     }
     else if (clang_isExpression(t)){
         printf("exp\n");
-        if(t==CXCursor_DeclRefExpr){
-            CXCursor c = clang_getCursorReferenced(cursor);
-            if(!CONTAIN(pd->parmset, c)){
-                printf("Found Parm\t");
-                debug_cursor(cursor);
-            }
-        }
-        else if (t == CXCursor_BinaryOperator){
-            printf("Found Binary\t");
-            //debug_cursor(cursor);
-            //clang_visitChildren(cursor, ssp_tree_debug, (CXClientData *)NULL);
-        }
     }
     else if (clang_isStatement(t)){
         printf("stmt\n");
@@ -127,14 +119,27 @@ ssp_type(CXCursor cursor, SSPD *pd){
 }
 
 int main(int argc, const char **argv) {
+    int i;
     CXIndex Index = clang_createIndex(0,0);
     CXTranslationUnit TU = clang_parseTranslationUnit(Index, 0,\
             argv, argc, 0, 0, CXTranslationUnit_None);
     CXCursor root = clang_getTranslationUnitCursor(TU);
+    char *fileName = OUTPUT(clang_getTranslationUnitSpelling(TU));
+    char *dbname = malloc(128 * sizeof(char));
+    PREFIX(fileName);
+    strcpy(dbname, "test");
+    for (i=0; i<argc; i++){
+        if (!strcmp(argv[i], "-dbname")){
+            strcpy(dbname, argv[i+1]);
+        }
+    }
+    strcat(dbname, "_");
+    strcat(dbname, fileName);
     printf("SSP Analyzer based on %s by Xingzhong\n", get_version());
-    printf("Database Link %s\n", sql_version());
-    clang_visitChildren(root, ssp_callback, (CXClientData *)NULL);
+    printf("Linked to %s @ MySQL v.%s\n", dbname, sql_version());
+    clang_visitChildren(root, ssp_callback, (CXClientData *)dbname);
     clang_disposeTranslationUnit(TU);
     clang_disposeIndex(Index);
+    free(dbname);
     return 0;
 }
