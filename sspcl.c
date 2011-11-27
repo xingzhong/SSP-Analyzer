@@ -1,26 +1,12 @@
 /* sspcl.c */
 
-#include "clang-c/Index.h"
-#include <mysql/mysql.h>
-#include <stdlib.h>
-#include <stdio.h>
-#include <string.h>
+#include "ssp.h"
 
 #define OUTPUT(x) clang_getCString(x)
 #define is_declfun(x) (clang_getCursorKind(x) == CXCursor_FunctionDecl ? 1 : 0)
 #define CONTAIN clang_CXCursorSet_contains //if return 0, set contain the cursor
 #define INSERT  clang_CXCursorSet_insert
 
-typedef struct {
-    unsigned int depth;
-    CXCursorSet parmset;
-}SSPD;
-
-const char* get_version(void);
-enum CXChildVisitResult ssp_callback(CXCursor, CXCursor, CXClientData);
-enum CXChildVisitResult ssp_function(CXCursor, CXCursor, CXClientData);
-enum CXChildVisitResult ssp_type(CXCursor, SSPD* );
-void debug_cursor(CXCursor);
 
 void 
 debug_cursor(CXCursor Cursor){
@@ -33,6 +19,20 @@ debug_cursor(CXCursor Cursor){
     clang_disposeString(s1);
     clang_disposeString(s2);
 
+}
+
+char* 
+ssp2sql(CXCursor Cursor){
+    char *buf = malloc(512*sizeof(char));
+    CXString s0 = clang_getCursorKindSpelling(clang_getCursorKind(Cursor));
+    CXString s1 = clang_getCursorSpelling(Cursor);
+    CXString s2 = clang_getTypeKindSpelling( clang_getCursorType(Cursor).kind);
+    unsigned int hash = clang_hashCursor(Cursor);
+    sprintf(buf, "'%s','%s','%s',%d", OUTPUT(s0), OUTPUT(s1), OUTPUT(s2), hash);
+    clang_disposeString(s0);
+    clang_disposeString(s1);
+    clang_disposeString(s2);
+    return buf;
 }
 
 const char*
@@ -50,22 +50,26 @@ enum CXChildVisitResult
 ssp_function(CXCursor Cursor, CXCursor Parent, CXClientData ClientData){
     enum CXCursorKind t = clang_getCursorKind(Cursor);
     SSPD *data = (SSPD *)ClientData;
-    int *depth = &(data->depth);
-    (*depth)++;
-    if (clang_isDeclaration(t)){(*depth) = 1;}
-    return ssp_type(Cursor, data);
+    char *content = ssp2sql(Cursor);
+    sql_insert(data->conn, "tb1", content);
+    free(content);
+    return CXChildVisit_Recurse;
 }
 
 enum CXChildVisitResult 
 ssp_callback(CXCursor Cursor, CXCursor Parent, CXClientData ClientData){
     SSPD data;
     data.parmset = clang_createCXCursorSet();
+    data.conn = mysql_init(NULL);
+    sql_init(data.conn, "test");
     if (is_declfun(Cursor)){
         data.depth = 1;
         debug_cursor(Cursor);
+        sql_create_tbl(data.conn, "tb1"); /*FIXME: "tb1" change to function name*/
         clang_visitChildren(Cursor, ssp_function, (CXClientData *)(&data));
     }
     clang_disposeCXCursorSet(data.parmset);
+    sql_close(data.conn);
     return CXChildVisit_Continue;
 }
 
@@ -128,7 +132,7 @@ int main(int argc, const char **argv) {
             argv, argc, 0, 0, CXTranslationUnit_None);
     CXCursor root = clang_getTranslationUnitCursor(TU);
     printf("SSP Analyzer based on %s by Xingzhong\n", get_version());
-    printf("Database Link %s\n", mysql_get_client_info());
+    printf("Database Link %s\n", sql_version());
     clang_visitChildren(root, ssp_callback, (CXClientData *)NULL);
     clang_disposeTranslationUnit(TU);
     clang_disposeIndex(Index);

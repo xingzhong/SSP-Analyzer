@@ -23,3 +23,5 @@ USEDLIBS = clang.a clangIndex.a clangARCMigrate.a clangRewrite.a \
 	   clangAnalysis.a clangAST.a clangLex.a clangBasic.a
 
 include $(CLANG_LEVEL)/Makefile
+
+LIBS += `mysql_config --libs`
