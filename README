@@ -1,5 +1,8 @@
 This tool analyze the C/C++ programming languages based on Abstract Syntax
 Tree (AST).
-It use the library libclang as Clang in LLVM project. 
-Xingzhong Stevens Tech. SSP Team 
+It use libclang's API in LLVM project.
+
+Xingzhong Stevens Tech. SSP Team
+xxu7@stevens.edu
+www.sirxu.com
 Nov 17, 2011
