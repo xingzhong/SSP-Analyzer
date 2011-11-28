@@ -8,11 +8,12 @@
     if (mysql_query((x), (y))) \
     printf("Error %u: %s\n", mysql_errno(x), mysql_error(x))
 
-#define HEADER "id BIGINT NOT NULL AUTO_INCREMENT, \
+#define HEADER " \
     kind CHAR(64) NOT NULL, spell CHAR(128), \
-    type CHAR(64) NOT NULL, hash BIGINT, primary key (id)" 
+    type CHAR(64) NOT NULL, hash INT UNSIGNED,\
+    father INT UNSIGNED, primary key (hash)" 
 
-#define HEAD "kind, spell, type, hash"
+#define HEAD "kind, spell, type, hash, father"
 
 const char*
 sql_version(){
@@ -25,11 +26,13 @@ sql_init(MYSQL *conn, char *dbname){
     char *query = malloc(256 * sizeof(char));
     strcpy (name, DBNAME);
     strcat (name, dbname);
-    sprintf(query, "create database IF NOT EXISTS %s", name);
     if (conn == NULL){printf(" Connection Error\n");}
     if (mysql_real_connect(conn, "localhost", DBUSER, DBPWD, NULL, 0, NULL, 0) == NULL){
         printf("Error %u: %s\n", mysql_errno(conn), mysql_error(conn));
     }
+    sprintf(query, "drop database IF EXISTS %s", name);
+    QUERY(conn, query);
+    sprintf(query, "create database %s", name);
     QUERY(conn, query);
     mysql_select_db(conn, name);
     free(name);
@@ -37,8 +40,7 @@ sql_init(MYSQL *conn, char *dbname){
 }
 
 void 
-sql_close(MYSQL *conn){
-    mysql_close(conn);}
+sql_close(MYSQL *conn){mysql_close(conn);}
 
 void 
 sql_create_tbl(MYSQL *conn, char *tblname, unsigned int flag){ 

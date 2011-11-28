@@ -23,13 +23,14 @@ debug_cursor(CXCursor Cursor){
 }
 
 char* 
-ssp2sql(CXCursor Cursor){
+ssp2sql(CXCursor Cursor, CXCursor Parent){
     char *buf = malloc(512*sizeof(char));
     CXString s0 = clang_getCursorKindSpelling(clang_getCursorKind(Cursor));
     CXString s1 = clang_getCursorSpelling(Cursor);
     CXString s2 = clang_getTypeKindSpelling( clang_getCursorType(Cursor).kind);
     unsigned int hash = clang_hashCursor(Cursor);
-    sprintf(buf, "'%s','%s','%s',%d", OUTPUT(s0), OUTPUT(s1), OUTPUT(s2), hash);
+    unsigned int father = clang_hashCursor(Parent);
+    sprintf(buf, "'%s','%s','%s',%u, %u", OUTPUT(s0), OUTPUT(s1), OUTPUT(s2), hash, father);
     clang_disposeString(s0);
     clang_disposeString(s1);
     clang_disposeString(s2);
@@ -49,9 +50,8 @@ ssp_tree_debug(CXCursor Cursor, CXCursor Parent, CXClientData ClientData){
 
 enum CXChildVisitResult 
 ssp_function(CXCursor Cursor, CXCursor Parent, CXClientData ClientData){
-    enum CXCursorKind t = clang_getCursorKind(Cursor);
     SSPD *data = (SSPD *)ClientData;
-    char *content = ssp2sql(Cursor);
+    char *content = ssp2sql(Cursor, Parent);
     char *tblName = data->tblName;
     sql_insert(data->conn, tblName, content);
     free(content);
@@ -60,24 +60,17 @@ ssp_function(CXCursor Cursor, CXCursor Parent, CXClientData ClientData){
 
 enum CXChildVisitResult 
 ssp_callback(CXCursor Cursor, CXCursor Parent, CXClientData ClientData){
-    SSPD data;
-    data.conn = mysql_init(NULL);
-    data.dbName = (char *)ClientData;
-    sql_init(data.conn, data.dbName); 
-    /*FIXME no need to create db multiple times, then drop the previous db*/
+    SSPD *data = (SSPD *)ClientData;
     if (is_declfun(Cursor)){
-        data.tblName = malloc(128*sizeof(char));
-        strcpy(data.tblName, OUTPUT(clang_getCursorSpelling(Cursor)));
-        sql_create_tbl(data.conn, data.tblName, LOST); 
-        clang_visitChildren(Cursor, ssp_function, (CXClientData *)(&data));
-        free(data.tblName);
-        sql_close(data.conn);
+        data->tblName = malloc(128*sizeof(char));
+        strcpy(data->tblName, OUTPUT(clang_getCursorSpelling(Cursor)));
+        sql_create_tbl(data->conn, data->tblName, LOST); 
+        clang_visitChildren(Cursor, ssp_function, (CXClientData *)data);
+        free(data->tblName);
         return CXChildVisit_Continue;
     }
     else{
-        sql_create_tbl(data.conn, "TranslationUnit", KEEP);
-        debug_cursor(Cursor);
-        sql_insert(data.conn, "TranslationUnit", ssp2sql(Cursor));
+        sql_insert(data->conn, "TranslationUnit", ssp2sql(Cursor, Parent));
         return CXChildVisit_Recurse;
     }
 }
@@ -120,6 +113,7 @@ ssp_type(CXCursor cursor, SSPD *pd){
 
 int main(int argc, const char **argv) {
     int i;
+    SSPD data;
     CXIndex Index = clang_createIndex(0,0);
     CXTranslationUnit TU = clang_parseTranslationUnit(Index, 0,\
             argv, argc, 0, 0, CXTranslationUnit_None);
@@ -137,9 +131,14 @@ int main(int argc, const char **argv) {
     strcat(dbname, fileName);
     printf("SSP Analyzer based on %s by Xingzhong\n", get_version());
     printf("Linked to %s @ MySQL v.%s\n", dbname, sql_version());
-    clang_visitChildren(root, ssp_callback, (CXClientData *)dbname);
+    data.dbName = dbname; 
+    data.conn = mysql_init(NULL);
+    sql_init(data.conn, data.dbName); 
+    sql_create_tbl(data.conn, "TranslationUnit", KEEP);
+    clang_visitChildren(root, ssp_callback, (CXClientData *)(&data));
     clang_disposeTranslationUnit(TU);
     clang_disposeIndex(Index);
     free(dbname);
+    sql_close(data.conn);
     return 0;
 }
