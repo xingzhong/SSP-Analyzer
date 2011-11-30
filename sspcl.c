@@ -53,6 +53,7 @@ ssp_function(CXCursor Cursor, CXCursor Parent, CXClientData ClientData){
     SSPD *data = (SSPD *)ClientData;
     char *content = ssp2sql(Cursor, Parent);
     char *tblName = data->tblName;
+    enum CXCursorKind t = clang_getCursorKind(Cursor);
     sql_insert(data->conn, tblName, content);
     free(content);
     return CXChildVisit_Recurse;
