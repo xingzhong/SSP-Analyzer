@@ -81,7 +81,7 @@ ssp_callback(CXCursor Cursor, CXCursor Parent, CXClientData ClientData){
         return CXChildVisit_Continue;
     }
     else{
-        sql_insert(data->conn, "TranslationUnit", ssp2sql(Cursor, Parent));
+        //sql_insert(data->conn, "TranslationUnit", ssp2sql(Cursor, Parent));
         return CXChildVisit_Recurse;
     }
 }
