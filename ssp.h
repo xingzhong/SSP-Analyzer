@@ -11,6 +11,7 @@ typedef struct {
     MYSQL *conn;
     char *tblName;
     char *dbName;
+    char *file;
 }SSPD;
 
 const char* get_version(void);

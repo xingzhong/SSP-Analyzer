@@ -4,8 +4,11 @@
 #define DBUSER  "ssp"
 #define DBPWD   "ssp"
 
-#define QUERY(x,y) printf("[sql]:%s\n",y);\
+/*#define QUERY(x,y) printf("[sql]:%s\n",y);\
     if (mysql_query((x), (y))) \
+/    printf("Error %u: %s\n", mysql_errno(x), mysql_error(x))
+*/
+#define QUERY(x,y) if (mysql_query((x), (y))) \
     printf("Error %u: %s\n", mysql_errno(x), mysql_error(x))
 
 #define HEADER " \

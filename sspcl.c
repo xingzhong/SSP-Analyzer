@@ -62,12 +62,22 @@ ssp_function(CXCursor Cursor, CXCursor Parent, CXClientData ClientData){
 enum CXChildVisitResult 
 ssp_callback(CXCursor Cursor, CXCursor Parent, CXClientData ClientData){
     SSPD *data = (SSPD *)ClientData;
+    CXSourceLocation loc;
+    CXFile file;
+    unsigned int line, col, offset;
     if (is_declfun(Cursor)){
-        data->tblName = malloc(128*sizeof(char));
-        strcpy(data->tblName, OUTPUT(clang_getCursorSpelling(Cursor)));
-        sql_create_tbl(data->conn, data->tblName, LOST); 
-        clang_visitChildren(Cursor, ssp_function, (CXClientData *)data);
-        free(data->tblName);
+        loc = clang_getCursorLocation(Cursor);
+        clang_getSpellingLocation(loc, &file, &line, &col, &offset);
+        printf("[debug]:%s %u:%u\n",clang_getFileName(file), line, col);
+        printf("[debug]:%s\n", data->file);
+        if(!strcmp(data->file, OUTPUT(clang_getFileName(file)))){
+            data->tblName = malloc(128*sizeof(char));
+            strcpy(data->tblName, OUTPUT(clang_getCursorSpelling(Cursor)));
+            printf("[debug]:%s\n", data->tblName);
+            sql_create_tbl(data->conn, data->tblName, LOST); 
+            clang_visitChildren(Cursor, ssp_function, (CXClientData *)data);
+            free(data->tblName);
+        }
         return CXChildVisit_Continue;
     }
     else{
@@ -75,8 +85,6 @@ ssp_callback(CXCursor Cursor, CXCursor Parent, CXClientData ClientData){
         return CXChildVisit_Recurse;
     }
 }
-
-
 
 enum CXChildVisitResult
 ssp_type(CXCursor cursor, SSPD *pd){
@@ -120,6 +128,7 @@ int main(int argc, const char **argv) {
             argv, argc, 0, 0, CXTranslationUnit_None);
     CXCursor root = clang_getTranslationUnitCursor(TU);
     char *fileName = OUTPUT(clang_getTranslationUnitSpelling(TU));
+    data.file = OUTPUT(clang_getTranslationUnitSpelling(TU));
     char *dbname = malloc(128 * sizeof(char));
     PREFIX(fileName);
     strcpy(dbname, "test");
