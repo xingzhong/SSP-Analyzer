@@ -144,7 +144,7 @@ int main(int argc, const char **argv) {
     data.dbName = dbname; 
     data.conn = mysql_init(NULL);
     sql_init(data.conn, data.dbName); 
-    sql_create_tbl(data.conn, "TranslationUnit", KEEP);
+    //sql_create_tbl(data.conn, "TranslationUnit", KEEP);
     clang_visitChildren(root, ssp_callback, (CXClientData *)(&data));
     clang_disposeTranslationUnit(TU);
     clang_disposeIndex(Index);
