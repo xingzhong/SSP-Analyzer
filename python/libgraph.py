@@ -1,10 +1,35 @@
 import networkx as nx
 import pygraphviz as pgv
+import numpy as np
+
+class Weight:
+    def __init__(self, deg):
+        self.w = {}
+        self.deg = deg
+    def new(self, kind):
+        if self.w.has_key(kind):
+            pass
+        else:
+            self.w[kind] = self.tpl(kind)
+
+    def tpl(self, type):
+        if type == "BinaryOperator":
+            zero = np.zeros(self.deg)
+            zero[0] = 1
+            zero[1] = -1
+        elif type.endswith("Stmt") or type == "root":
+            zero = np.ones(self.deg)
+        else:
+            zero = np.zeros(self.deg)
+            zero[0] = 1
+        return zero
+        
 
 class Graph:
     def __init__(self, raw):
         self.net = nx.DiGraph()
         self.candi = []
+
         for x in raw:
             n = Node(x)
             self.net.add_node(n.hash, attr_dict=n.data)
@@ -15,7 +40,61 @@ class Graph:
             if self.is_candi(n):
                 self.candi.append(n.data['spell'])
         self.root = self.find_root()
-        self.find_feature()
+        deg = self.net.out_degree()
+        self.deg = max(deg.itervalues())
+        self.w = Weight(self.deg)
+        self.init_weight()
+        self.init_input()
+        self.forward()
+        #self.find_feature()
+
+    def init_weight(self):
+        for n,d in self.net.nodes_iter(data=True):
+            self.w.new(d['kind'])
+        print self.w.w
+
+    def init_input(self):
+        self.input = {}
+        for n,d in self.net.nodes_iter(data=True):
+            if d['kind'] == "DeclRefExpr":
+                if not self.input.has_key(d['spell']):
+                    self.input[d['spell']] = 1
+        input = np.eye(len(self.input))
+        ind = 0
+        for k in self.input.iterkeys():
+            self.input[k] = input[ind]
+            ind = ind + 1
+        self.dim = ind 
+        print self.input
+
+    def forward(self):
+        print self.forward_1(self.root)
+    
+    def set_label(self, node, label):
+        self.net.node[node]['label'] = "%s | %s"%(self.net.node[node]['label']\
+                ,label)
+
+    def forward_1(self, node):
+        kind = self.net.node[node]['kind']
+        if self.net.out_degree(node) == 0:
+            name = self.net.node[node]['spell']
+            if self.input.has_key(name):
+                self.set_label(node, self.input[name])
+                return self.input[name]
+            else:
+                self.net.node[node]['label'] = np.zeros(self.dim)
+                return np.zeros(self.dim)
+        else:
+            succ = self.net.successors(node)
+            sum = np.zeros(self.dim)
+            ind = 0 
+            for s in succ:
+                ww = self.w.w[kind][ind] * self.forward_1(s)
+                sum = sum + ww
+                ind = ind + 1
+            self.net.node[node]['label'] = sum
+            return sum
+
 
     def is_candi(self, node):
         if node.data['kind'] == "ParmDecl":
@@ -83,3 +162,4 @@ class Node:
     def debug(self):
         print "hash:%s"%(self.hash)
         print "data:%s"%(self.data)
+
