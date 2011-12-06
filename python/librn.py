@@ -4,25 +4,22 @@ class RN:
         self.net = {}
         self.deg = deg
         self.theta = 0.5
+        self.lam = 0.2 #learning rate
+        
 
     def addNet(self, name):
-        initNet = np.zeros(self.deg)
-        initNet[0] = 1
-        initNet[1] = -1
+        initNet = np.ones(self.deg)
         if not self.net.has_key(name):
             self.net[name] = initNet
-        if name in ['ArraySubscriptExpr']:
-            self.net[name] = np.zeros(self.deg)
-            self.net[name][0] = -1
-            self.net[name][1] = 1
-        if name.endswith("Stmt") or name in ['root']:
-            self.net[name] = np.ones(self.deg)
 
     def forward(self, input, type):
         #input should be feature vectors
         #make sure weight and input have equal length
         weight = self.net[type]
-        d =  sum(input[i]*weight[i] for i in range(len(input)))
+        num = input.shape[1]
+        w = np.matrix(weight[:num]).getT()
+        d = input * w 
+        d = np.squeeze(np.asarray(d))
         output = self.sigmoid(d + self.theta)
         return output
 
@@ -31,21 +28,43 @@ class RN:
         return 1.0/(1.0 + np.exp(-a*x))
 
     def training(self, tree):
-        print "Start training ..."
-        print "Input "
-        for i in tree.input:
-            print i, tree.input[i]
-        print "Desired Output"
-        dout = tree.input['y']
-        print dout
-        print "Output"
+        self.tree = tree
         output = tree.forward()
-        print output
-        self.error(output, dout)
+        self.training_1(self.tree.root, output - self.tree.input['y'])
+    
+    def training_1(self, node, err):
+        type = self.tree.net.node[node]['kind']
+        z = self.tree.net.node[node]['feature']
+        error = z * (1-z) * err
+        dthe = self.lam * error
+        dw = dthe * self.get_input(node)
+        dw = np.squeeze(np.asarray(dw))
+        dw = np.array(dw, ndmin=1)
+        weight = self.net[type]
+        self.updateWeight(node, dw)
+        succ = self.tree.get_succ(node)
+        for i in range(len(succ)):
+            n = succ[i]
+            w = weight[i]
+            if self.tree.net.out_degree(n) > 0:
+                self.training_1(n, w*error)
+
+    
+    def updateWeight(self, node, dw):
+        type = self.tree.net.node[node]['kind']
+        print type, dw, self.net[type]
+        for i in range(len(dw)):
+            self.net[type][i] = self.net[type][i] + dw[i]
 
     def error(self, real, desire):
-        diff = real - desire
-        print diff
+        diff = real * (1-real) * (real - desire)
+        dtheta = self.lam * diff
+        return dtheta
+
+    def get_input(self, node): #get input data vector for one node
+        x = np.matrix( map(lambda x: self.tree.net.node[x]['feature'],\
+                self.tree.get_succ(node)) ).getT()
+        return x
 
     def debug(self):
         for i in self.net.items():

@@ -23,7 +23,6 @@ class Graph:
         self.nn = rn.RN(self.deg)
         self.init_input()
         self.nn.training(self)
-        self.forward()
 
     def init_input(self):
         self.input = {}
@@ -56,17 +55,26 @@ class Graph:
             name = self.net.node[node]['spell']
             if self.input.has_key(name):
                 self.set_label(node, self.input[name])
+                self.net.node[node]['feature'] = self.input[name]
                 return self.input[name]
             else:
                 self.set_label(node, np.zeros(self.dim))
+                self.net.node[node]['feature'] = np.zeros(self.dim)
                 return np.zeros(self.dim)
         else:
-            succ = self.net.successors(node)
-            input = map(self.forward_1, succ)
+            succ = self.get_succ(node)
+            input = np.matrix(map(self.forward_1, succ)).getT()
             sum = self.nn.forward(input, kind)
             self.set_label(node, sum)
+            self.net.node[node]['feature'] = sum
             return sum
-
+    
+    def get_succ(self, node):
+        edge = self.net.out_edges(node, data=True)
+        edge = sorted(edge)
+        succ = map(lambda x: x[1], edge)
+        return succ
+        
 
     def is_candi(self, node):
         if node.data['kind'] == "ParmDecl":
