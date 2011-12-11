@@ -2,6 +2,7 @@ import networkx as nx
 import pygraphviz as pgv
 import numpy as np
 import librn as rn
+import ann as rnn
 
 class Graph:
     def __init__(self, raw):
@@ -18,11 +19,12 @@ class Graph:
                 self.candi.append(n.data['spell'])
 
         self.root = self.find_root()
-        deg = self.net.out_degree()
-        self.deg = max(deg.itervalues())
-        self.nn = rn.RN(self.deg)
-        self.init_input()
-        self.nn.training(self)
+        #deg = self.net.out_degree()
+        #self.deg = max(deg.itervalues())
+        #self.nn = rn.RN(self.deg)
+        #self.init_input()
+        #self.nn.training(self)
+        rnn.RNN(self.net, self.root)
 
     def init_input(self):
         self.input = {}
