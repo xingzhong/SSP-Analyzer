@@ -3,7 +3,7 @@ import libgraph as gr
 
 #dbname = "clang_testnn_filter"
 dbname = "clang_testnn_test"
-dbname = "clang_ssp12_test5"
+#dbname = "clang_ssp12_test5"
 ins = sql.SQL(dbname)
 tbl = ins.tls()
 for t in tbl:

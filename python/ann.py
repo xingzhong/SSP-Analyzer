@@ -1,4 +1,5 @@
 import numpy as np
+from numpy import linalg as LA
 
 def sigmoid(x):
     return np.tanh(x)
@@ -13,6 +14,7 @@ def dot(x, y):
 class Node:
     def __init__(self, deg):
         self.node = {}
+        self.err = {}
         self.deg = deg
 
     def addNode(self, label):
@@ -22,12 +24,16 @@ class Node:
             # initilized the weight
             # self.node[label]=np.zeros(self.deg)
             self.node[label]=np.ones(self.deg)
+            self.err[label]= 0
 
     def c(self, label):
         if self.node.has_key(label):
             return self.node[label]
         else:
-            print "Error no weight"
+            raise ValueError("Error no weight")
+
+    def update(self, label, value):
+        self.node[label] = self.node[label] + value
 
 class Input:
     def __init__(self):
@@ -58,31 +64,63 @@ class RNN:
         self.deg = max(self.tree.out_degree().itervalues())
         self.node = Node(self.deg)
         self.input = Input()
+        self.ao = {}
         for n,d in self.tree.nodes_iter(data=True):
             self.node.addNode(d['kind'])
             self.input.addNode(d['spell'])
         self.input.fix()
+        self.train(targets=[0,1,0,0])
 
-        # update one input
-        self.update()
 
-    def train(self):
-        pass
+    def train(self, targets, iterations=1, N=0.5, M=0.1):
+        # N: learning rate
+        # M: Momentum factor
+        for i in range(iterations):
+            # update one input
+            self.update()
+            self.backPropagate(targets, N, M)
+
+    def backPropagate(self, targets, N, M):
+        err = targets - self.output
+        derr = err * dsigmoid(self.output)
+        self.node.err['root'] = derr
+        self.bp_err(self.root)
+        print LA.norm(err)
+
+    
+    def bp_err(self, node):
+        kind  = self.tree.node[node]['kind']
+        err  = self.node.err[kind]
+        weight = self.node.c(kind)
+        error = err * weight 
+        succ = self.succ(node)
+        for i in range(len(succ)):
+            kind  = self.tree.node[succ[i]]['kind']
+            ao = self.ao[succ[i]]
+            derr = dsigmoid(ao) * error
+            self.node.err[kind] = self.node.err[kind] + derr
+            change = self.node.err[kind] * ao
+            self.node.update(kind, change)
+            self.bp_err(succ[i])
+
 
     def update(self):
-        return self.f(self.root)
+        self.output = self.f(self.root)
+        self.ao[self.root] = self.output
 
     def f(self, node):
         spell = self.tree.node[node]['spell']
         kind  = self.tree.node[node]['kind']
         if self.is_leaf(node):
-            return self.input.c(spell)
+            self.ao[node] = self.input.c(spell)
+            return self.ao[node]
         else:
             succ = self.succ(node)
             input = map(self.f, succ)
             weight = self.node.c(kind)
             sum = dot(input, weight)
-            return sigmoid(sum)
+            self.ao[node] = sigmoid(sum)
+            return self.ao[node]
 
 
     def is_leaf(self, node):
