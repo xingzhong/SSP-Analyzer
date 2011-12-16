@@ -2,7 +2,7 @@ import numpy as np
 from numpy import linalg as LA
 
 def sigmoid(x):
-    return np.tanh(x)
+    return 1.0 / (1.0 + np.exp(-x))
 
 def dsigmoid(x):
     return 1.0 - x**2
@@ -23,7 +23,7 @@ class Node:
         else:
             # initilized the weight
             # self.node[label]=np.zeros(self.deg)
-            self.node[label]=np.ones(self.deg)
+            self.node[label]= np.random.uniform(-1.0, 1.0, self.deg)
             self.err[label]= 0
 
     def c(self, label):
@@ -32,8 +32,21 @@ class Node:
         else:
             raise ValueError("Error no weight")
 
-    def update(self, label, value):
-        self.node[label] = self.node[label] + value
+    def update(self, label, value, k):
+        #print "[label %s] %s -> "%(label, self.node[label]),
+        self.node[label][k] = self.node[label][k] + value
+        #print self.node[label]
+
+    def clean(self):
+        for v in self.err.keys():
+            self.err[v] = 0.0
+
+    def show(self):
+        for item in self.node.iteritems():
+            node = item[0]
+            weight = item[1]
+            print node, weight
+            
 
 class Input:
     def __init__(self):
@@ -49,6 +62,7 @@ class Input:
         num = len(self.input)
         ma = np.eye(num)
         self.input = dict(zip(self.input.keys(), ma))
+        print self.input
 
     def c(self, label):
         if self.input.has_key(label):
@@ -58,9 +72,10 @@ class Input:
 
 
 class RNN:
-    def __init__(self, tree, root):
+    def __init__(self, tree, root, graph):
         self.tree = tree
         self.root = root
+        self.nxg = graph
         self.deg = max(self.tree.out_degree().itervalues())
         self.node = Node(self.deg)
         self.input = Input()
@@ -69,39 +84,46 @@ class RNN:
             self.node.addNode(d['kind'])
             self.input.addNode(d['spell'])
         self.input.fix()
-        self.train(targets=[0,1,0,0])
+        self.train(targets=[1,0,0,0])
 
 
-    def train(self, targets, iterations=1, N=0.5, M=0.1):
+    def train(self, targets, iterations=100, N=0.5, M=0.1):
         # N: learning rate
         # M: Momentum factor
         for i in range(iterations):
             # update one input
             self.update()
-            self.backPropagate(targets, N, M)
+            err = self.backPropagate(targets, N, M)
+        print targets
+        print err
+        self.node.show()
 
     def backPropagate(self, targets, N, M):
         err = targets - self.output
-        derr = err * dsigmoid(self.output)
-        self.node.err['root'] = derr
-        self.bp_err(self.root)
-        print LA.norm(err)
+        self.node.err['root'] = err
+        self.bp_err(self.root, N, M)
+        self.node.clean()
+        return LA.norm(err)
+
+    def bp_dw(self, ft, error, ftk):
+        res = 2 * error * (1 - ft) * ft * ftk
+        return sum(res)
+
 
     
-    def bp_err(self, node):
+    def bp_err(self, node, N, M):
         kind  = self.tree.node[node]['kind']
-        err  = self.node.err[kind]
+        error  = self.node.err[kind]
+        ft = self.ao[node]
         weight = self.node.c(kind)
-        error = err * weight 
         succ = self.succ(node)
-        for i in range(len(succ)):
-            kind  = self.tree.node[succ[i]]['kind']
-            ao = self.ao[succ[i]]
-            derr = dsigmoid(ao) * error
-            self.node.err[kind] = self.node.err[kind] + derr
-            change = self.node.err[kind] * ao
-            self.node.update(kind, change)
-            self.bp_err(succ[i])
+        for k in range(len(succ)):
+            kind_k  = self.tree.node[succ[k]]['kind']
+            ftk = self.ao[succ[k]]
+            change =  N * self.bp_dw(ft, error, ftk)
+            self.node.update(kind, change, k)
+            self.node.err[kind_k] = self.node.err[kind_k] + weight[k] * error
+            self.bp_err(succ[k], N, M)
 
 
     def update(self):

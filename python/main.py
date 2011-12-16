@@ -13,6 +13,6 @@ for t in tbl:
     print table
     if not table == "TranslationUnit":
         g = gr.Graph(raw)
-#    g.draw(name=table)
+        g.draw(name=table)
 
 ins.free()
