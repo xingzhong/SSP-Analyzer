@@ -24,7 +24,6 @@ class Graph:
         #self.nn = rn.RN(self.deg)
         #self.init_input()
         #self.nn.training(self)
-        rnn.RNN(self.net, self.root, self)
 
     def init_input(self):
         self.input = {}

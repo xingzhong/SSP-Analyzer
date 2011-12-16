@@ -1,0 +1,7 @@
+*.png
+*.swp
+.project
+.DS_Store
+*~
+log
+*.o

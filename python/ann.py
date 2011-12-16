@@ -2,10 +2,11 @@ import numpy as np
 from numpy import linalg as LA
 
 def sigmoid(x):
-    return 1.0 / (1.0 + np.exp(-x))
-
-def dsigmoid(x):
-    return 1.0 - x**2
+    #for i in range(len(x)):
+    #    if x[i]<1e-100:
+    #        x[i] = 0
+    temp = np.exp(-x)
+    return 1.0 / (1.0 + temp)
 
 def dot(x, y):
     num = min(len(x), len(y))
@@ -22,7 +23,6 @@ class Node:
             pass
         else:
             # initilized the weight
-            # self.node[label]=np.zeros(self.deg)
             self.node[label]= np.random.uniform(-1.0, 1.0, self.deg)
             self.err[label]= 0
 
@@ -45,7 +45,7 @@ class Node:
         for item in self.node.iteritems():
             node = item[0]
             weight = item[1]
-            print node, weight
+            print "[%s]\t%s"%(node, map(lambda x : "%.2f"%x, weight))
             
 
 class Input:
@@ -62,41 +62,51 @@ class Input:
         num = len(self.input)
         ma = np.eye(num)
         self.input = dict(zip(self.input.keys(), ma))
-        print self.input
-
+        
     def c(self, label):
         if self.input.has_key(label):
             return self.input[label]
         else:
             return np.zeros_like(self.input.values()[0])
+    
+    def target(self):   #return output label
+        return self.input['OUTPUT']
+
+    def inference(self, ins): #given a output, return the variable name
+        temp = dict(zip(self.input.keys(), ins))
+        return max(temp, key=temp.get)
+
 
 
 class RNN:
-    def __init__(self, tree, root, graph):
+    def __init__(self, tree, root, graph, nodedb):
         self.tree = tree
         self.root = root
         self.nxg = graph
         self.deg = max(self.tree.out_degree().itervalues())
-        self.node = Node(self.deg)
+        #self.node = Node(self.deg)
+        self.node = nodedb
         self.input = Input()
         self.ao = {}
         for n,d in self.tree.nodes_iter(data=True):
             self.node.addNode(d['kind'])
             self.input.addNode(d['spell'])
         self.input.fix()
-        self.train(targets=[1,0,0,0])
 
+    def test(self):
+        print self.input.inference(self.update())
 
-    def train(self, targets, iterations=100, N=0.5, M=0.1):
+    def train(self, iterations=100, N=0.7, M=0.1):
         # N: learning rate
         # M: Momentum factor
+        targets = self.input.target()
         for i in range(iterations):
             # update one input
             self.update()
-            err = self.backPropagate(targets, N, M)
-        print targets
-        print err
-        self.node.show()
+            self.ioerr = self.backPropagate(targets, N, M)
+        #print targets
+        #print self.update()
+        #self.node.show()
 
     def backPropagate(self, targets, N, M):
         err = targets - self.output
@@ -109,26 +119,33 @@ class RNN:
         res = 2 * error * (1 - ft) * ft * ftk
         return sum(res)
 
-
-    
     def bp_err(self, node, N, M):
         kind  = self.tree.node[node]['kind']
         error  = self.node.err[kind]
         ft = self.ao[node]
         weight = self.node.c(kind)
         succ = self.succ(node)
+  
+        #self.debug(kind, weight, error, ft)
         for k in range(len(succ)):
             kind_k  = self.tree.node[succ[k]]['kind']
             ftk = self.ao[succ[k]]
-            change =  N * self.bp_dw(ft, error, ftk)
+            change = N * self.bp_dw(ft, error, ftk)
             self.node.update(kind, change, k)
-            self.node.err[kind_k] = self.node.err[kind_k] + weight[k] * error
+            self.node.err[kind_k] = self.node.err[kind_k]  + M * weight[k] * error
             self.bp_err(succ[k], N, M)
+
+    def debug(self, kind, weight, error, ft):
+        print "[%s]"%kind
+        print "[weight]\t", map(lambda x : "%.2f"%x, weight)
+        print "[error]\t",  map(lambda x : "%.2f"%x, error)
+        print "[ft]\t", map(lambda x : "%.2f"%x, ft)
 
 
     def update(self):
         self.output = self.f(self.root)
         self.ao[self.root] = self.output
+        return self.output
 
     def f(self, node):
         spell = self.tree.node[node]['spell']
