@@ -14,7 +14,7 @@ def dot(x, y):
 
 class Node:
     def __init__(self, deg):
-        self.node = {}
+        self.node = {}      #node type
         self.err = {}
         self.deg = deg
     
@@ -39,7 +39,7 @@ class Node:
         #print self.node[label]
     
     def clean(self):
-        for v in self.err.keys():
+        for v in self.node.keys():
             self.err[v] = 0.0
     
     def show(self):
@@ -63,7 +63,8 @@ class Input:
         num = len(self.input)
         ma = np.eye(num)
         self.input = dict(zip(self.input.keys(), ma))
-        print self.input
+        for item in self.input.iteritems():
+            print "[%s]\t%s"%(item[0], item[1])
     
     def c(self, label):
         if self.input.has_key(label):
@@ -76,7 +77,8 @@ class Input:
     
     def inference(self, ins): #given a output, return the variable name
         temp = dict(zip(self.input.keys(), ins))
-        print temp
+        for item in temp.iteritems():
+            print "[%s]\t%s"%(item[0], item[1])
         return max(temp, key=temp.get)
 
 
@@ -108,14 +110,14 @@ class RNN:
             self.update()
             self.ioerr = self.backPropagate(targets, N, M)
             print self.ioerr
-        print targets
+        print "[targets]", targets
         print self.update()
     
     def backPropagate(self, targets, N, M):
+        self.node.clean()
         err = targets - self.output
         self.node.err['root'] = err
         self.bp_err(self.root, N, M)
-        self.node.clean()
         return LA.norm(err)
     
     def bp_dw(self, ft, error, ftk):
@@ -129,7 +131,7 @@ class RNN:
         weight = self.node.c(kind)
         succ = self.succ(node)
         
-        self.debug(kind, weight, error, ft)
+        #self.debug(kind, weight, error, ft)
         for k in range(len(succ)):
             kind_k  = self.tree.node[succ[k]]['kind']
             ftk = self.ao[succ[k]]
