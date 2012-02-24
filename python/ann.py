@@ -18,23 +18,29 @@ class Node:
         self.err = {}
         self.deg = deg
     
-    def addNode(self, label):
-        if self.node.has_key(label):
+    def addNode(self, label, deg):
+        if deg == 0 :
             pass
+        if self.node.has_key(label):
+            num = len(self.node[label])
+            if num < deg:
+                self.node[label] = np.append(self.node[label], np.random.uniform(-1.0, 1.0, deg-num))
+                print "update %s(%s->%s)%s"%(label,num,deg,self.node[label])
         else:
             # initilized the weight
             print "init %s"%label
-            self.node[label]= np.random.uniform(-1.0, 1.0, self.deg)
+            self.node[label]= np.random.uniform(-1.0, 1.0, deg)
             self.err[label]= 0.0
     
     def c(self, label):
+        #get weight
         if self.node.has_key(label):
             return self.node[label]
         else:
             raise ValueError("Error no weight")
     
     def update(self, label, value, k):
-        #print "[label %s] %s -> "%(label, self.node[label]),
+        #print "#%s[label %s] %s -> "%(k, label, self.node[label]),
         self.node[label][k] = self.node[label][k] + value
         #print self.node[label]
     
@@ -63,8 +69,8 @@ class Input:
         num = len(self.input)
         ma = np.eye(num)
         self.input = dict(zip(self.input.keys(), ma))
-        for item in self.input.iteritems():
-            print "[%s]\t%s"%(item[0], item[1])
+        #for item in self.input.iteritems():
+        #    print "[%s]\t%s"%(item[0], item[1])
     
     def c(self, label):
         if self.input.has_key(label):
@@ -76,7 +82,11 @@ class Input:
         return self.input['OUTPUT']
     
     def inference(self, ins): #given a output, return the variable name
-        temp = dict(zip(self.input.keys(), ins))
+        temp = {}
+        for item in self.input.iteritems():
+            vari = item[0]
+            vect = item[1]
+            temp[vari] = dot(vect, ins)
         for item in temp.iteritems():
             print "[%s]\t%s"%(item[0], item[1])
         return max(temp, key=temp.get)
@@ -94,7 +104,8 @@ class RNN:
         self.input = Input()
         self.ao = {}
         for n,d in self.tree.nodes_iter(data=True):
-            self.node.addNode(d['kind'])
+            deg = self.tree.out_degree(n)
+            self.node.addNode(d['kind'], deg)
             self.input.addNode(d['spell'])
         self.input.fix()
     

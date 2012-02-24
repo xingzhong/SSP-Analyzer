@@ -1,4 +1,4 @@
-void work(double x, double y){
-    y = x + x + 1;
+void work(double x, double OUTPUT){
+    OUTPUT = x + x + 1;
 }
 

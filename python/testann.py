@@ -1,4 +1,3 @@
-#! /opt/local/bin/python2.7
 
 import ann as rnn
 import networkx as nx
@@ -41,7 +40,8 @@ def loadChange(file):
     for item in mydict.iteritems():
         type = item[0]
         weight = item[1]
-        print type, weight
+        num = len(weight)
+        print type, weight, num
         var = raw_input("Enter Weight: ")
         print var
         mydict[type] = np.fromstring(var, sep=' ')

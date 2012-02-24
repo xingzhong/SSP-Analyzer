@@ -19,6 +19,7 @@ class Graph:
                 self.candi.append(n.data['spell'])
 
         self.root = self.find_root()
+
         #deg = self.net.out_degree()
         #self.deg = max(deg.itervalues())
         #self.nn = rn.RN(self.deg)
@@ -103,17 +104,18 @@ class Graph:
 
 class Node:
     def __init__(self, raw):
-        self.hash = raw[3]
-        self.father = raw[4]
+        self.hash = raw[4]
+        self.father = raw[5]
         self.data = {}
-        self.data['kind'] = raw[0]
-        self.data['spell'] = raw[1]
-        self.data['type'] = raw[2]
-        self.data['hash'] = raw[3]
-        self.data['father'] = raw[4]
+        self.data['id'] = raw[0]
+        self.data['kind'] = raw[1]
+        self.data['spell'] = raw[2]
+        self.data['type'] = raw[3]
+        self.data['hash'] = raw[4]
+        self.data['father'] = raw[5]
 
         self.data['shape'] = 'record'
-        self.data['label'] = "%s|%s"%(raw[0],raw[1])
+        self.data['label'] = "%s|%s"%(raw[1],raw[2])
 
 
     def debug(self):

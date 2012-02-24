@@ -12,9 +12,10 @@
     printf("Error %u: %s\n", mysql_errno(x), mysql_error(x))
 
 #define HEADER " \
+    id INT NOT NULL AUTO_INCREMENT, \
     kind CHAR(64) NOT NULL, spell CHAR(128), \
     type CHAR(64) NOT NULL, hash INT UNSIGNED,\
-    father INT UNSIGNED, primary key (hash)" 
+    father INT UNSIGNED, primary key (id)" 
 
 #define HEAD "kind, spell, type, hash, father"
 

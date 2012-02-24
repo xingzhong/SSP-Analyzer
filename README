@@ -2,6 +2,11 @@ This tool analyze the C/C++ programming languages based on Abstract Syntax
 Tree (AST).
 It use libclang's API in LLVM project.
 
+Usage:
+1. Add source file into the regular LLVM source code tree. ~/llvm/tools/clang/tools/
+2. Make and add the generated binary file into $PATH
+3. Execute 'sspcl -dbname testdbname foo.c'
+
 Xingzhong Stevens Tech. SSP Team
 xxu7@stevens.edu
 www.sirxu.com

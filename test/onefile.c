@@ -250,7 +250,7 @@ double *trinomial_mult( int n, double *b, double *c )
   N = number of data points. The array, c, should contain 2*N elements
   isign = 1 for forward FFT, -1 for inverse FFT.
 */
-
+/*
 void FFT( double *OUTPUT, int N, int isign )
 {
   int n, n2, nb, j, k, i0, i1;
@@ -315,4 +315,4 @@ void FFT( double *OUTPUT, int N, int isign )
       cp += n << 1;
     }
   }
-}
+}*/
