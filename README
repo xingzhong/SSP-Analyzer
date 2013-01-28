@@ -1,13 +1,23 @@
+SSP Syntactic Analyzer
+
+Xingzhong xxu7@stevens.edu
+
+Project of ECE Dept. @ Stevens Institute of Technology, NJ
+Project belongs to the Stevens Semantic Signal Processing Project
+
+The SSP Syntactic Analyzer aims to explore the signal processing source 
+code at syntactic level. In the main platform, we manually write rule based
+source code parser through javascript. However, the scale and performance is 
+not what we expected. Therefore, this tool is supposed to facliate the main 
+platform to parsing the signal processing source code. 
 This tool analyze the C/C++ programming languages based on Abstract Syntax
-Tree (AST).
-It use libclang's API in LLVM project.
+Tree (AST). It use libclang's API in LLVM project which can provides easy and 
+stable parsing performance. 
+The analyzer will extract the AST into an external database. And we provides 
+Python script to analyze the AST through database. 
 
 Usage:
 1. Add source file into the regular LLVM source code tree. ~/llvm/tools/clang/tools/
 2. Make and add the generated binary file into $PATH
 3. Execute 'sspcl -dbname testdbname foo.c'
 
-Xingzhong Stevens Tech. SSP Team
-xxu7@stevens.edu
-www.sirxu.com
-Nov 17, 2011
